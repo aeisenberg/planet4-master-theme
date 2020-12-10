@@ -223,6 +223,8 @@ class MasterSite extends TimberSite {
 
 		// Disable xmlrpc.
 		add_filter( 'xmlrpc_enabled', '__return_false' );
+
+		$this->register_meta_fields();
 	}
 
 	/**
@@ -883,6 +885,22 @@ class MasterSite extends TimberSite {
 	}
 
 	/**
+	 * Declare meta fields
+	 */
+	private function register_meta_fields(): void {
+		// Credit for images, used in image caption.
+		\register_meta(
+			'post',
+			'_credit_text',
+			[
+				'show_in_rest' => true,
+				'type'         => 'string',
+				'single'       => true,
+			]
+		);
+	}
+
+	/**
 	 * Registers oembed provider for Carto map.
 	 */
 	public function register_oembed_provider() {
@@ -1127,19 +1145,29 @@ class MasterSite extends TimberSite {
 	 */
 	public function p4_core_image_block_render( $attributes, $content ) {
 		$image_id = isset( $attributes['id'] ) ? trim( str_replace( 'attachment_', '', $attributes['id'] ) ) : '';
-		$meta     = get_post_meta( $image_id );
+		if ( empty( $image_id ) ) {
+			return $content;
+		}
 
-		if ( isset( $meta['_credit_text'] ) && ! empty( $meta['_credit_text'][0] ) ) {
-			$image_credit = ' ' . $meta['_credit_text'][0];
-			if ( false === strpos( $meta['_credit_text'][0], '©' ) ) {
-				$image_credit = ' ©' . $image_credit;
-			}
+		$credit = get_post_meta( $image_id, '_credit_text', true );
+		if ( empty( $credit ) ) {
+			return $content;
+		}
 
-			if ( strpos( $content, '<figcaption>' ) !== false ) {
-				$content = str_replace( '</figcaption>', esc_attr( $image_credit ) . '</figcaption>', $content );
-			} else {
-				$content = str_replace( '</figure>', '<figcaption>' . esc_attr( $image_credit ) . '</figcaption></figure>', $content );
-			}
+		$image_credit = ' ' . $credit;
+		if ( false === strpos( $credit, '©' ) ) {
+			$image_credit = ' ©' . $image_credit;
+		}
+
+		$caption = explode( '<figcaption>', $content, 2 )[1] ?? '';
+		if ( strpos( $caption, $image_credit ) !== false ) {
+			return $content;
+		}
+
+		if ( strpos( $content, '<figcaption>' ) !== false ) {
+			$content = str_replace( '</figcaption>', esc_attr( $image_credit ) . '</figcaption>', $content );
+		} else {
+			$content = str_replace( '</figure>', '<figcaption>' . esc_attr( $image_credit ) . '</figcaption></figure>', $content );
 		}
 
 		return $content;
