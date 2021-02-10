@@ -16,6 +16,12 @@ export const setupExternalLinks = () => {
 
   if (links.length > 0) {
     links.forEach(link => {
+      // We don't want to show the icon in headings/titles
+      const linkParent = link.parentElement.nodeName;
+      if (['H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(linkParent)) {
+        return;
+      }
+
       const href = link.href || '';
       if (href && !href.includes(siteURL)) {
         const text = link.textContent || link.innerText;
